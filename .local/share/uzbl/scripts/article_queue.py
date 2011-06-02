@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import os
 from sys import argv
 import json
 import socket
 from datetime import datetime
+import subprocess
+import re
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -75,21 +77,23 @@ def back(queue):
     return shift(queue)
 
 def list_queue(queue):
+    pos = 0
     qs = ""
     first = True
     for item in queue:
+        pos += 1
         if not first:
-            qs += "\\n"
+            qs += "\n"
         first = False
-        qs += item['title']
-    qs = qs.replace('"', '"')
-    qs = qs.replace('(', '[')
-    qs = qs.replace(')', ']')
-    command = "js alert(\"%s\");\n" % qs
-    print command
-    fifo = open(os.environ['UZBL_FIFO'], "a")
-    fifo.write(command.encode('ascii', 'replace'))
-    fifo.close()
+        qs += str(pos) + ': ' + item['title']
+    choice = subprocess.Popen(['echo "%s" | dmenu -i -l 10' % qs], shell=True, stdout=subprocess.PIPE).communicate()[0]
+    if choice:
+        index = int(re.search('^(\d+)', choice).group(1))
+        url = pop(queue, index)
+        persist_queue(queue)
+        fifo = open(os.environ['UZBL_FIFO'], "a")
+        fifo.write("uri " + url['url'] + "\n")
+        fifo.close()
 
 def write_fifo(url):
     fifo = open(os.environ['UZBL_FIFO'], "a")
