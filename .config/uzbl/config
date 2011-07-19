@@ -34,36 +34,41 @@ set modkey_addition = request MODKEY_ADDITION
 set toggle_modes    = request TOGGLE_MODES
 
 # allow javascript to open new windows
-set javascript_windows = 1
+# TODO: Remove this: seems to not be necessary given the follow.js upgrade with version Commit: 91da964
+#set javascript_windows = 1
 
-set set_mode        = set mode =
-set set_status      = set status_message =
+set set_mode    =  set mode =
+set set_status  =  set status_message =
 
 # Spawn path shortcuts. In spawn the first dir+path match is used in "dir1:dir2:dir3:executable"
-set scripts_dir      = @data_home/uzbl:@prefix/share/uzbl/examples/data:scripts
+set scripts_dir  =  @data_home/uzbl:@prefix/share/uzbl/examples/data:scripts
 
 # === Hardcoded handlers =====================================================
 
 # These handlers can't be moved to the new event system yet as we don't
 # support events that can wait for a response from a script.
-set scheme_handler      = sync_spawn @scripts_dir/scheme.py
-set authentication_handler = sync_spawn @scripts_dir/auth.py
-set download_handler    = sync_spawn @scripts_dir/download.sh
+set scheme_handler          =  sync_spawn @scripts_dir/scheme.py
+set authentication_handler  =  sync_spawn @scripts_dir/auth.py
+set download_handler        =  sync_spawn @scripts_dir/download.sh
 
 # === Dynamic event handlers =================================================
 
 #   What to do when a website wants to open a new window:
 # Open link in new window
-@on_event   NEW_WINDOW     sh 'uzbl-tabbed "$1"' %r
+#@on_event   NEW_WINDOW     sh 'uzbl-tabbed "$1"' %r
 # Open in current window (also see the REQ_NEW_WINDOW event handler below)
 #@on_event   NEW_WINDOW     uri %s
 # Open in new tab. Other options are NEW_TAB_NEXT, NEW_BG_TAB and NEW_BG_TAB_NEXT.
 #@on_event   NEW_WINDOW     event NEW_TAB %s
+@on_event   NEW_WINDOW     event NEW_BG_TAB_NEXT %s
 
 #   What to do when the user requests a new window:
 # If your the NEW_WINDOW handler opens the uri in the current window, you'll
 # probably want to change this handler to open a new window or tab.
-@on_event   REQ_NEW_WINDOW event NEW_WINDOW %s
+#@on_event   REQ_NEW_WINDOW event NEW_WINDOW %s
+#@on_event   REQ_NEW_WINDOW event NEW_BG_TAB_NEXT %s
+#@on_event   REQ_NEW_WINDOW event NEW_TAB_NEXT %s
+@on_event   REQ_NEW_WINDOW  sh 'uzbl-tabbed "$1"' %s
 
 # Load start handler
 @on_event   LOAD_START     @set_status <span foreground="khaki">wait</span>
@@ -87,7 +92,7 @@ set download_handler    = sync_spawn @scripts_dir/download.sh
 @on_event   LOAD_FINISH    spawn @scripts_dir/history.sh
 
 # Switch to insert mode if a (editable) html form is clicked
-@on_event   FORM_ACTIVE    @set_mode insert
+@on_event   FOCUS_ELEMENT  sh 'if [ "$1" = INPUT -o "$1" = TEXTAREA -o "$1" = SELECT ]; then echo "@set_mode insert" > $UZBL_FIFO; fi' %s
 # Switch to command mode if anything else is clicked
 @on_event   ROOT_ACTIVE    @set_mode command
 
@@ -95,7 +100,7 @@ set download_handler    = sync_spawn @scripts_dir/download.sh
 #@on_event  CONFIG_CHANGED print Config changed: %1 = %2
 
 # Scroll percentage calculation
-@on_event   SCROLL_VERT    set scroll_message = \@<(function(){var p='--';if(%3!=%2){p=(%1/(%3-%4));p=Math.round(10000*p)/100;};return p+'%';})()>\@
+@on_event   SCROLL_VERT    set scroll_message = \@<(function(curr, min, max, size){if(max == size) return '--'; var p=(curr/(max - size)); return Math.round(10000*p)/100;})(%1,%2,%3,%4)>\@%
 
 # === Behaviour and appearance ===============================================
 
@@ -137,6 +142,10 @@ set progress.format     = [%d>%p]%c
 set progress.done       = =
 set progress.pending    =
 
+# === Tabbed Settings ========================================================
+
+set show_gtk_tabs = 1
+
 # === Useragent setup ========================================================
 
 set useragent         = Uzbl (Webkit @{WEBKIT_MAJOR}.@{WEBKIT_MINOR}) (@(+uname -sm)@ [@ARCH_UZBL])
@@ -147,7 +156,7 @@ set useragent         = Uzbl (Webkit @{WEBKIT_MAJOR}.@{WEBKIT_MINOR}) (@(+uname 
 #request WHITELIST_COOKIE domain 'uzbl.org$' expires '^$'
 
 # Drop google analytics tracking cookies (applied after whitelists if any)
-#request BLACKLIST_COOKIE name '^__utm.$'
+request BLACKLIST_COOKIE name '^__utm.$'
 
 # === Key binding configuration ==============================================
 # --- Internal modmapping and ignoring ---------------------------------------
@@ -157,17 +166,20 @@ set useragent         = Uzbl (Webkit @{WEBKIT_MAJOR}.@{WEBKIT_MINOR}) (@(+uname 
 @modmap <ISO_Left_Tab>  <Shift-Tab>
 @modmap <space>         <Space>
 @modmap <KP_Enter>      <Enter>
-@modmap <Mod1>          <Alt>
+#@modmap <Mod1>          <Alt>
 
-#modkey_addition <Key1>  <Key2>    <Result>
-@modkey_addition <Shift> <Ctrl>    <Meta>
-@modkey_addition <Shift> <Tab>     <Shift-Tab>
-@modkey_addition <Shift> <Insert>  <Shift-Insert>
+##modkey_addition <Key1>  <Key2>    <Result>
+#@modkey_addition <Shift> <Ctrl>    <Meta>
+#@modkey_addition <Shift> <Tab>     <Shift-Tab>
+#@modkey_addition <Shift> <Insert>  <Shift-Insert>
 
 #ignore_key <glob>
 @ignore_key <ISO_*>
 @ignore_key <Shift>
 @ignore_key <Multi_key>
+@ignore_key <Mod2>
+@ignore_key <Mod4>
+@ignore_key <Super>
 
 # --- Bind aliases -----------------------------------------------------------
 
@@ -205,7 +217,7 @@ set ebind     = @mode_bind global,-insert
 @ebind  <Delete>     = event KEYCMD_DELETE
 @ebind  <Tab>        = event START_COMPLETION
 # Readline-ish bindings.
-@ebind  <Ctrl>w      = event KEYCMD_STRIP_WORD
+@ebind  <Ctrl>w      = event KEYCMD_STRIP_WORD \ -./&?=
 @ebind  <Ctrl>u      = event SET_KEYCMD
 @ebind  <Ctrl>a      = event SET_CURSOR_POS 0
 @ebind  <Ctrl>e      = event SET_CURSOR_POS -1
@@ -221,8 +233,11 @@ set ebind     = @mode_bind global,-insert
 
 # --- Mouse bindings ---------------------------------------------------------
 
+# TODO: Mouse Buttons appear to be broken in Commit: 91da964
+
 # Middle click open in new window
-@bind  <Button2>  = sh 'if [ "$1" ]; then echo "event REQ_NEW_WINDOW $1" > "$UZBL_FIFO"; else echo "uri $(xclip -o | sed s/\\\@/%40/g)" > "$UZBL_FIFO"; fi' '\@SELECTED_URI'
+#@bind  <Button2>  = sh 'if [ "$1" ]; then echo "event REQ_NEW_WINDOW $1" > "$UZBL_FIFO"; else echo "uri $(xclip -o | sed s/\\\@/%40/g)" > "$UZBL_FIFO"; fi' '\@SELECTED_URI'
+@bind  <Button2>  = sh 'if [ "$1" ]; then echo "event NEW_WINDOW $1" > "$UZBL_FIFO"; else echo "uri $(xclip -o | sed s/\\\@/%40/g)" > "$UZBL_FIFO"; fi' '\@SELECTED_URI'
 
 # --- Keyboard bindings ------------------------------------------------------
 
@@ -231,7 +246,8 @@ set ebind     = @mode_bind global,-insert
 @cbind    :_        = %s
 
 # open a new window or a new tab (see the on_event NEW_WINDOW settings above)
-@cbind  w            = event REQ_NEW_WINDOW
+# use gw instead
+# @cbind  w            = event REQ_NEW_WINDOW
 
 # Page movement binds
 @cbind  j            = scroll vertical 20
@@ -278,11 +294,11 @@ set ebind     = @mode_bind global,-insert
 @cbind  <Ctrl>p = hardcopy
 
 # Web searching binds
-@cbind  gg<Google:>_         = uri http://www.google.com/search?q=\@<encodeURIComponent(%r)>\@
-@cbind  gi<Google Images:>_   = uri http://www.google.com/images?q=\@<encodeURIComponent(%r)>\@
-@cbind  ddg<DuckDuckGo:>_    = uri http://duckduckgo.com/?q=%s
-@cbind  \\awiki<Archwiki:>_  = uri http://wiki.archlinux.org/index.php/Special:Search?search=\@<encodeURIComponent(%r)>\@&go=Go
-@cbind  \\wiki<Wikipedia:>_  = uri http://en.wikipedia.org/w/index.php?title=Special:Search&search=\@<encodeURIComponent(%r)>\@&go=Go
+@cbind  gg<Google:>_         =  uri http://www.google.com/search?q=\@<encodeURIComponent(%r)>\@
+@cbind  gi<Google Images:>_  =  uri http://www.google.com/images?q=\@<encodeURIComponent(%r)>\@
+@cbind  ddg<DuckDuckGo:>_    =  uri http://duckduckgo.com/?q=%s
+@cbind  \\aw<Archwiki:>_     =  uri http://wiki.archlinux.org/index.php/Special:Search?search=\@<encodeURIComponent(%r)>\@&go=Go
+@cbind  \\wp<Wikipedia:>_    =  uri http://en.wikipedia.org/w/index.php?title=Special:Search&search=\@<encodeURIComponent(%r)>\@&go=Go
 
 # Handy binds
 # Set function shortcut
@@ -296,8 +312,8 @@ set ebind     = @mode_bind global,-insert
 
 # Use socat to directly inject commands into uzbl-core and view events
 # raised by uzbl-core:
-#@cbind  <Ctrl><Alt>t  = sh 'xterm -e "socat unix-connect:\"$UZBL_SOCKET\" -"'
-@cbind  <Ctrl><Alt>t  = sh 'urxvt -e socat unix-connect:"$UZBL_SOCKET" -'
+#@cbind  <Ctrl><Mod1>t  = sh 'xterm -e "socat unix-connect:\"$UZBL_SOCKET\" -"'
+@cbind  <Ctrl><Mod1>t  = sh 'urxvt -e socat unix-connect:"$UZBL_SOCKET" -'
 
 # Uri opening prompts
 @cbind  o<uri:>_       = uri %s
@@ -309,10 +325,16 @@ set ebind     = @mode_bind global,-insert
 @bind   <Ctrl>i  = @set_mode insert
 
 # Hard-bound bookmarks
-@cbind  gh  = uri http://www.uzbl.org
+@cbind  gh  = uri https://github.com/dahu
+
 
 # New window binds
-@cbind  gw  = event REQ_NEW_WINDOW
+@cbind  ww                    = event REQ_NEW_WINDOW
+@cbind  wc                    = exit
+@cbind  wo<uri:>_             = event REQ_NEW_WINDOW %s
+@cbind  wO<uri:\@uri>_        = event REQ_NEW_WINDOW %s
+@cbind  wgg<Google:>_         = event REQ_NEW_WINDOW http://www.google.com/search?q=\@<encodeURIComponent(%r)>\@
+@cbind  wgi<Google Images:>_  = event REQ_NEW_WINDOW http://www.google.com/images?q=\@<encodeURIComponent(%r)>\@
 
 # SSL-ify bindings
 @cbind  zs  = uri \@(echo "$UZBL_URI" | sed -e 's/^http:/https:/')\@
@@ -320,7 +342,7 @@ set ebind     = @mode_bind global,-insert
 
 # Yanking & pasting binds
 @cbind  yu  = sh 'echo -n "$UZBL_URI" | xclip'
-@cbind  yU  = sh 'echo -n "$1" | xclip' \@SELECTED_URI
+@cbind  yU  = sh 'echo -n "$1" | xclip' '\@SELECTED_URI'
 @cbind  yy  = sh 'echo -n "$UZBL_TITLE" | xclip'
 
 # Clone current window
@@ -332,25 +354,33 @@ set ebind     = @mode_bind global,-insert
 # Start a new uzbl instance from the page in primary selection
 @cbind  'p  = sh 'echo "event REQ_NEW_WINDOW $(xclip -o)" > "$UZBL_FIFO"'
 # paste primary selection into keycmd at the cursor position
-@bind <Shift-Insert> = sh 'echo "event INJECT_KEYCMD $(xclip -o | sed s/\\\@/%40/g)" > "$UZBL_FIFO"'
+@bind <Shift><Insert> = sh 'echo "event INJECT_KEYCMD $(xclip -o | sed s/\\\@/%40/g)" > "$UZBL_FIFO"'
 
 # Bookmark inserting binds
-@cbind <Ctrl>b<tags:>_  = sh 'echo `printf "$UZBL_URI %s"` >> "$XDG_DATA_HOME"/uzbl/bookmarks'
+@cbind <Ctrl>m<tags:>_  = sh 'echo "$UZBL_URI $1" >> "$XDG_DATA_HOME"/uzbl/bookmarks' '%s'
 # Or use a script to insert a bookmark.
-@cbind  B  = spawn @scripts_dir/insert_bookmark.sh
+@cbind  M  = spawn @scripts_dir/insert_bookmark.sh
 
 # Bookmark/history loading
 @cbind  U  = spawn @scripts_dir/load_url_from_history.sh
 @cbind  u  = spawn @scripts_dir/load_url_from_bookmarks.sh
 
+# Temporary bookmarks
+@cbind  <Ctrl>d  = spawn @scripts_dir/insert_temp.sh
+@cbind  D        = spawn @scripts_dir/load_url_from_temps.sh
+
+# NOTE: I customised the follow.sh script to cater for the   event REQ_NEW_WINDOW   param below
 # Link following (similar to vimperator and konqueror)
 # Set custom keys you wish to use for navigation. Some common examples:
 #set follow_hint_keys = 0123456789
 #set follow_hint_keys = qwerty
 set follow_hint_keys = asdfghjkl;
 #set follow_hint_keys = thsnd-rcgmvwb/;789aefijkopquxyz234
-@cbind  fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 0) >\@
-@cbind  Fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 1) >\@
+@cbind  fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'click') >\@
+@cbind  Fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'newwindow') >\@
+#@cbind  fL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ set
+@cbind  fL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ 'event REQ_NEW_WINDOW'
+@cbind  FL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ clipboard
 @cbind  fi   = spawn @scripts_dir/go_input.sh
 
 # Form filler binds
@@ -359,37 +389,42 @@ set follow_hint_keys = asdfghjkl;
 # This implementation allows you to save multiple profiles for each form
 # (think about multiple accounts on some website).
 set formfiller = spawn @scripts_dir/formfiller.sh
-@cbind  za  = @formfiller add
+# NOTE: The   za   bind had been removed from Commit: 91da964
+#@cbind  za  = @formfiller add
 @cbind  ze  = @formfiller edit
 @cbind  zn  = @formfiller new
 @cbind  zl  = @formfiller load
+@cbind  zo  = @formfiller once
 
 # --- Uzbl tabbed binds ------------------------------------------------------
 
 # Tab opening
-@cbind  gn              = event NEW_TAB
-@cbind  gN              = event NEW_TAB_NEXT
-@cbind  go<uri:>_       = event NEW_TAB %s
-@cbind  gO<uri:>_       = event NEW_TAB_NEXT %s
+@cbind  gn                      =  event NEW_TAB
+@cbind  gN                      =  event NEW_TAB_NEXT
+@cbind  go<uri:>_               =  event NEW_TAB %s
+@cbind  gO<uri:>_               =  event NEW_TAB_NEXT %s
+@cbind  gc                      =  event NEW_TAB_NEXT \@uri
 
 # Closing / resting
-@cbind  gC              = exit
-@cbind  gQ              = event CLEAN_TABS
+@cbind  gC                      =  exit
+@cbind  gQ                      =  event CLEAN_TABS
 
 # Tab navigating
-@cbind  g<              = event FIRST_TAB
-@cbind  g>              = event LAST_TAB
-@cbind  gt              = event NEXT_TAB
-@cbind  gT              = event PREV_TAB
-@cbind  gx<index:>_     = event GOTO_TAB %s
+@cbind  g<                      =  event FIRST_TAB
+@cbind  g>                      =  event LAST_TAB
+@cbind  gt                      =  event NEXT_TAB
+@cbind  <Ctrl><Page_Down>       =  event NEXT_TAB
+@cbind  gT                      =  event PREV_TAB
+@cbind  <Ctrl><Page_Up>         =  event PREV_TAB
+@cbind  gx<index:>_             =  event GOTO_TAB %s
 
 # Preset loading
-set preset = event PRESET_TABS
-@cbind  gs<preset save:>_   = @preset save %s
-@cbind  glo<preset load:>_  = @preset load %s
-@cbind  gd<preset del:>_    = @preset del %s
+set preset                      =  event PRESET_TABS
+@cbind  gs<preset save:>_       =  @preset save %s
+@cbind  glo<preset load:>_      =  @preset load %s
+@cbind  gd<preset del:>_        =  @preset del %s
 # This doesn't work right now.
-#@cbind  gli                 = @preset list
+#@cbind  gli                    =  @preset list
 
 # === Local Script Binds =====================================================
 
@@ -407,46 +442,46 @@ set preset = event PRESET_TABS
 # === Context menu items =====================================================
 
 # Default context menu
-menu_add Google = set uri = http://google.com
-menu_add Go Home = set uri = http://uzbl.org
+menu_add Google             =  set uri=http://google.com
+menu_add Go Home            =  set uri=http://uzbl.org
 menu_separator separator_1
-menu_add Quit uzbl = exit
+menu_add Quit uzbl          =  exit
 
 # Link context menu
-menu_link_add Print Link = print \@SELECTED_URI
+menu_link_add Print Link    =  print \@SELECTED_URI
 
 # === Mode configuration =====================================================
 
 # Define some mode specific uzbl configurations.
-set command  = @mode_config command
-set insert   = @mode_config insert
-set stack    = @mode_config stack
+set command                         =  @mode_config command
+set insert                          =  @mode_config insert
+set stack                           =  @mode_config stack
 
 # Command mode config.
-@command  keycmd_style        = foreground="red"
-@command  status_background   = #202020
-@command  mode_indicator      = Cmd
-@command  keycmd_events       = 1
-@command  forward_keys        = 0
-@command  modcmd_updates      = 1
+@command  keycmd_style              =  foreground="red"
+@command  status_background         =  #202020
+@command  mode_indicator            =  Cmd
+@command  keycmd_events             =  1
+@command  forward_keys              =  0
+@command  modcmd_updates            =  1
 
 # Insert mode config.
-@insert   status_background   = #303030
-@insert   mode_indicator      = Ins
-@insert   forward_keys        = 1
-@insert   keycmd_events       = 0
-@insert   modcmd_updates      = 0
+@insert   status_background         =  #303030
+@insert   mode_indicator            =  Ins
+@insert   forward_keys              =  1
+@insert   keycmd_events             =  0
+@insert   modcmd_updates            =  0
 
 # Multi-stage-binding mode config.
-@stack    keycmd_style        = foreground="red"
-@stack    status_background   = #202020
-@stack    mode_indicator      = Bnd
-@stack    prompt_style        = foreground="#888" weight="light"
-@stack    keycmd_events       = 1
-@stack    modcmd_updates      = 1
-@stack    forward_keys        = 0
+@stack    keycmd_style              =  foreground="red"
+@stack    status_background         =  #202020
+@stack    mode_indicator            =  Bnd
+@stack    prompt_style              =  foreground="#888" weight="light"
+@stack    keycmd_events             =  1
+@stack    modcmd_updates            =  1
+@stack    forward_keys              =  0
 
-set default_mode = command
+set default_mode                    =  command
 
 # === Post-load misc commands ================================================
 sync_spawn_exec @scripts_dir/load_cookies.sh
