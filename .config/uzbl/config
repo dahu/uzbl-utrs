@@ -377,7 +377,7 @@ set ebind     = @mode_bind global,-insert
 set follow_hint_keys = asdfghjkl;
 #set follow_hint_keys = thsnd-rcgmvwb/;789aefijkopquxyz234
 @cbind  fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'click') >\@
-@cbind  Fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'newwindow') >\@
+@cbind  Fl*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'newwindow') >\@ 'event NEW_WINDOW'
 #@cbind  fL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ set
 @cbind  fL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ 'event REQ_NEW_WINDOW'
 @cbind  FL*  = spawn @scripts_dir/follow.sh \@< uzbl.follow("\@follow_hint_keys", "%s", 'returnuri') >\@ clipboard
@@ -488,7 +488,8 @@ sync_spawn_exec @scripts_dir/load_cookies.sh
 sync_spawn_exec @scripts_dir/load_cookies.sh @data_home/uzbl/session-cookies.txt
 
 # use local proxy
-set proxy_url = http://localhost:8123
+# - set proxy_url = http://localhost:8123
+set proxy_url = http://192.168.1.11:3128
 
 # Set the "home" page.
 set uri = uzbl.org/doesitwork/@COMMIT
