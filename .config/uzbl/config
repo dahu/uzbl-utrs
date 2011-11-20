@@ -82,7 +82,7 @@ set download_handler        =  sync_spawn @scripts_dir/download.sh
 @on_event   LOAD_COMMIT    js uzbl = {};
 @on_event   LOAD_COMMIT    script @scripts_dir/formfiller.js
 @on_event   LOAD_COMMIT    script @scripts_dir/follow.js
-@on_event   LOAD_COMMIT    script @scripts/adblock.js
+@on_event   LOAD_COMMIT    script @scripts_dir/adblock_local.js
 
 # Userscripts/per-site-settings. See the script and the example configuration for details
 #@on_event   LOAD_COMMIT    spawn @scripts_dir/per-site-settings.py @data_home/uzbl/per-site-settings
@@ -493,5 +493,8 @@ set proxy_url = http://192.168.1.11:3128
 
 # Set the "home" page.
 set uri = uzbl.org/doesitwork/@COMMIT
+
+# use English everywhere
+#set accept_languages = en
 
 # vim: set fdm=syntax:
